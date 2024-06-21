@@ -1,0 +1,109 @@
+---
+title: "R_Assignment1"
+format: pdf
+editor: visual
+author: "Apoorv Kumar 23200979"
+---
+
+```{r}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+
+# Using fread function to read data with the data.table library
+India_healthData <- 
+  fread("/Users/apoorvkumar/Downloads/hdro_indicators_ind.csv")
+
+Ireland_healthData <- 
+  fread("/Users/apoorvkumar/Documents/DACS-3/Advance_R/hdro_indicators_irl.csv")
+```
+
+## Join the data table
+
+```{r}
+# Using the merge function from the Data.Table package.
+Merged_DT <- merge(Ireland_healthData, India_healthData , all = TRUE)
+Merged_DT <- Merged_DT[-1,]
+
+# View the structure of the data 
+str(Merged_DT)
+
+# converting the character variable to numeric variable
+Merged_DT[, year := as.numeric(year)]
+Merged_DT[, value := as.numeric(value)]
+
+
+# Check and remove for any null value
+sum(is.na(Merged_DT))
+Merged_DT <- na.omit(Merged_DT)
+
+# check the distinct values for each column
+sapply(Merged_DT, function(b) n_distinct(b))
+```
+
+## Analysis on adolescent birth rate and gender inequality index.
+
+Filter to relevant indicators for analysis, here using Adolescent Birth Rate and Gender Inequality Index
+
+```{r}
+dt_GII_IND <- 
+  Merged_DT[indicator_name == "Adolescent Birth Rate (births per 1,000 women ages 15-19)" 
+                        & index_name == "Gender Inequality Index" 
+                        & Merged_DT$country_code == "IND"]
+
+dt_GII_IRL <- 
+  Merged_DT[indicator_name == "Adolescent Birth Rate (births per 1,000 women ages 15-19)" 
+                        & index_name == "Gender Inequality Index" 
+                        & Merged_DT$country_code == "IRL"]
+
+# Calculate average Adolescent Birth Rate by year, using keyby to group by year
+avg_birth_rate_by_year_Ind <- 
+  dt_GII_IND[,.(Average_Adolescent_Birth_Rate = mean(value, na.rm = TRUE)),
+                                         keyby = .(year)]
+
+avg_birth_rate_by_year_Irl <- 
+  dt_GII_IRL[,.(Average_Adolescent_Birth_Rate = mean(value, na.rm = TRUE)), 
+                                         keyby = .(year)]
+
+
+# Order results by year to prepare for trend analysis or plotting
+avg_birth_rate_by_year_Ind <- avg_birth_rate_by_year_Ind[order(year)]
+avg_birth_rate_by_year_Irl <- avg_birth_rate_by_year_Irl[order(year)]
+```
+
+## Ploting the analysis result
+
+```{r}
+# Filter to include only a specific indicator for simplicity
+dt_gdp <- Merged_DT[indicator_name == "Gross National Income Per Capita (2017 PPP$)"]
+
+# Plot GDP per capita over years for both countries
+ggplot(dt_gdp, aes(x = year, y = value, color = country_code)) +
+    geom_line() +
+    labs(title = "GDP per Capita Over Years",
+         x = "Year",
+         y = "Gross National Income Per Capita (2017 PPP$)",
+         color = "Country") +
+    theme_minimal()
+```
+
+The above plot represents the Gross National Income per capita for India and Ireland over the time. It could be observed that there is a constant increase in GNIC for India altough initially it begun with very less value where as the GNIC for Ireland initially showes growth and later it falls around 2005 - 2010 and later it shows constant growth.
+
+```{r}
+# Plotting the trend of Adolescent Birth Rate over the years
+ggplot(avg_birth_rate_by_year_Ind, aes(x = year, y = Average_Adolescent_Birth_Rate)) +
+    geom_line() +
+    labs(title = "Trend of Adolescent Birth Rate in India",
+         x = "Year",
+         y = "Average Birth Rate (per 1,000 women ages 15-19)") +
+    theme_minimal()
+
+ggplot(avg_birth_rate_by_year_Irl, aes(x = year, y = Average_Adolescent_Birth_Rate)) +
+    geom_line() +
+    labs(title = "Trend of Adolescent Birth Rate in Ireland",
+         x = "Year",
+         y = "Average Birth Rate (per 1,000 women ages 15-19)") +
+    theme_minimal()
+```
+
+The Adolescent birth rate in India was very high as compared with Ireland. It decreases constantly over the time span and is very less as compared to previous years data. The Adolescent birth rate in Ireland is comparatively very less. It showed sudden spike during 1995-2000 which later came under control after 2000.
